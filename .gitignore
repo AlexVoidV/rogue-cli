@@ -65,5 +65,5 @@ venv.bak/
 .ruff_cache/
 
 ### Personal ###
-demo.py
+demo*.py
 cliff.toml
