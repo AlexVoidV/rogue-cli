@@ -13,23 +13,42 @@ TILE: dict[str, str] = {
 
 # === Game State ===
 class GameState:
+    """The class (drawing) of the game state"""
+
     def __init__(self) -> None:
         self.map: list[str] = [
-            "########",
+            "########",  # y=0
             "#......#",
             "#.##...#",
-            "#..@...#",
+            "#..@...#",  # y=3
             "#......#",
-            "########",
+            "########",  # y=5
         ]
         self.player_x, self.player_y = 3, 3  # Start pos of '@' (player)
 
     def render(self) -> str:
-        """Returns the string to render"""
+        """Takes a list of strings and connects them via a `\\n`
+
+        Returns:
+            str: The string to render
+        """
+
         return "\n".join(self.map)
 
     def move_player(self, dx: int, dy: int) -> bool:
-        """Tries to move the player. Returns success (True)"""
+        """Tries to move the player
+
+        Args:
+            dx (int): X-direction change (horizontal): `-1` = left,
+            `+1` = right
+
+            dy (int): Y-direction change (vertical): `-1` = up,
+            `+1` = down
+
+        Returns:
+            bool: `True` (Success) or `False` (Fail)
+        """
+
         new_x, new_y = self.player_x + dx, self.player_y + dy
         # Checking borders and walls
         if (
@@ -55,7 +74,12 @@ class GameState:
 
 # === The playing field widget ===
 class GameScreen(Static):
-    """The widget that draws the map"""
+    """The widget that draws the map
+
+    Args:
+        Static (Static): ready-made Textual widget for displaying static
+        text
+    """
 
     def __init__(self, game_state: GameState) -> None:
         super().__init__()
@@ -63,12 +87,21 @@ class GameScreen(Static):
         self.update(self.game_state.render())  # First render
 
     def refresh_map(self) -> None:
-        """To call after a state change"""
+        """Just redraws the map after the player has moved
+
+        To call after a state change"""
+
         self.update(self.game_state.render())
 
 
 # === Main app ===
 class RogueApp(App):
+    """Main Application
+
+    Args:
+        App (App): the main Textual class
+    """
+
     # A temporary solution
     CSS = """
     GameScreen {
@@ -85,12 +118,28 @@ class RogueApp(App):
         self.game_state = GameState()
 
     def compose(self) -> ComposeResult:
+        """A special Textual method that shows widgets
+
+        Returns:
+            ComposeResult: a widget that builds an interface using other
+            widgets
+
+        Yields:
+            Iterator[ComposeResult]: returns the container widget,
+            saving the state of all variables
+        """
+
         yield GameScreen(self.game_state)
         yield Header()
         yield Footer()
 
     def on_key(self, event: Key) -> None:
-        """Input Handler"""
+        """Reaction to the keys (Input Handler)
+
+        Args:
+            event (Key): an object with information about the key
+        """
+
         moved = False
         if event.key == "up" or event.key == "k":
             moved: bool = self.game_state.move_player(0, -1)

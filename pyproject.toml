@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = [
-    "textual>=8.2.4",
-    "textual-dev>=1.8.0",
-]
+dependencies = ["textual>=8.2.4", "textual-dev>=1.8.0"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = ["E501", "W505"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
