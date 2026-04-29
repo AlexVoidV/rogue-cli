@@ -102,16 +102,7 @@ class RogueApp(App):
         App (App): the main Textual class
     """
 
-    # A temporary solution
-    CSS = """
-    GameScreen {
-        width: 100%;
-        height: 100%;
-        background: black;
-        color: green;
-        text-style: bold;
-    }
-    """
+    CSS_PATH = "style.tcss"
 
     def __init__(self) -> None:
         super().__init__()
@@ -140,14 +131,20 @@ class RogueApp(App):
             event (Key): an object with information about the key
         """
 
+        UP_KEYS: set[str] = {"up", "w", "k"}
+        DOWN_KEYS: set[str] = {"down", "s", "j"}
+        LEFT_KEYS: set[str] = {"left", "a", "h"}
+        RIGHT_KEYS: set[str] = {"right", "d", "l"}
+
         moved = False
-        if event.key == "up" or event.key == "k":
+
+        if event.key in UP_KEYS:
             moved: bool = self.game_state.move_player(0, -1)
-        elif event.key == "down" or event.key == "j":
+        elif event.key in DOWN_KEYS:
             moved: bool = self.game_state.move_player(0, 1)
-        elif event.key == "left" or event.key == "h":
+        elif event.key in LEFT_KEYS:
             moved: bool = self.game_state.move_player(-1, 0)
-        elif event.key == "right" or event.key == "l":
+        elif event.key in RIGHT_KEYS:
             moved: bool = self.game_state.move_player(1, 0)
 
         if moved:

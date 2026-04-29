@@ -1,0 +1,7 @@
+GameScreen {
+    width: 100%;
+    height: 100%;
+    background: black;
+    color: green;
+    text-style: bold;
+}
