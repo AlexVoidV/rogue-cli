@@ -5,10 +5,39 @@ from textual.events import Key
 
 # === Configuration ===
 TILE: dict[str, str] = {
+    # Solid tiles
     "WALL": "#",
     "FLOOR": ".",
+    # Player
     "PLAYER": "@",
+    # Doors
+    "CLOSED_DOOR": "+",
+    "OPEN_DOOR": "/",
+    # Stairs
+    "UP_STAIRS": "<",
+    "DOWN_STAIRS": ">",
+    # Monsters
+    "SLIME": "S",
+    "KOBOLD": "K",
+    "ZOMBIE": "Z",
+    "MIMIC": "M",
+    "DRAGON": "D",
+    # Special
+    "TRAP": "?",
+    "PORTAL": "X",
+    # Pickups
+    "MONEY": "$",
+    "FOOD": "%",
+    "POTION": "!",
+    "ARMOR": "=",
+    "WEAPON": "^",
 }
+
+# TODO: GameEngine - moves, collision
+# TODO: Stats - level, hits, str, gold, armor, exp, floor
+# TODO: GameState - map, entities, inventory (primitive)
+# TODO: Components - player, item, enemy
+# TODO: Utils - FOV (fog of war), pathfinding for enemies
 
 
 # === Game State ===
