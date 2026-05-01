@@ -55,12 +55,10 @@ WALKABLE_TERRAIN: set[str] = {
 }
 
 
-# TODO: Stats - floor
-# TODO: Save/Load
 # TODO: Debug console
-# TODO: Dragon on 15 floor, portal after dragon's death to escape
+# TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
-# and load (continue) button and new game button
+# TODO: More colors, center for menu and game
 
 
 # === Map generator ===
@@ -817,7 +815,7 @@ class RogueApp(App):
             Many widgets
         """
         yield GameScreen(self.game_state)
-        yield StatsPanel(id="stats_panel")
+        # BUG? yield StatsPanel(id="stats_panel")
         yield Header()
         yield Footer()
 
@@ -885,7 +883,9 @@ class RogueApp(App):
 
     def _sync_stats(self) -> None:
         try:
-            panel: StatsPanel = self.query_one("#stats_panel", StatsPanel)
+            panel: StatsPanel = self.screen.query_one(
+                "#stats_panel", StatsPanel
+            )
             panel.sync(
                 self.game_state.player_stats, self.game_state.current_floor
             )
