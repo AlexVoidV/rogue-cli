@@ -618,9 +618,12 @@ class GameState:
                 self.enemies.remove(enemy)
                 self.player_stats.gain_xp(enemy.xp_reward)
             else:
-                self.player_stats.take_damage(
+                is_dead = self.player_stats.take_damage(
                     max(0, enemy.attack - self.player_stats.armor)
                 )
+                if is_dead:
+                    # Game over
+                    pass
             return True
 
         self.player_x, self.player_y = nx, ny
@@ -745,6 +748,14 @@ class RogueApp(App):
             self.query_one(selector=GameScreen).refresh_map()
 
         self._sync_stats()
+
+        if self.game_state.player_stats.hits <= 0:
+            self.notify("GAME OVER!", severity="error")
+            # Restart game
+            # self.game_state = GameState(width=80, height=30)
+            # self.game_state.generate_level(self.prefabs)
+            # self.query_one(GameScreen).game_state = self.game_state
+            # self.query_one(GameScreen).refresh_map()
 
 
 if __name__ == "__main__":
