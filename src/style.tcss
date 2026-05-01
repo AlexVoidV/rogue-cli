@@ -38,9 +38,9 @@ ProgressBar {
     padding: 0 !important; */
 }
 
-/* #hp_bar {
-    margin-right: 0;
-} */
+#hp_bar {
+    margin-right: 1;
+}
 
 #xp_bar {
     margin-right: 0;
@@ -58,14 +58,18 @@ ProgressBar {
     content-align: center middle;
 }
 
+#hp_bar .bar--bar,
 #hp_bar .bar--complete {
-    background: red;
+    background: #4f4d4d;
+    color: #e11b1b;
 }
 
+#xp_bar .bar--bar,
 #xp_bar .bar--complete {
-    background: yellow;
-    color: black;
+    background: #4f4d4d;
+    color: #14d227;
 }
+
 
 Header,
 Footer {

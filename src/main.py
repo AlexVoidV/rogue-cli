@@ -56,7 +56,7 @@ WALKABLE_TERRAIN: set[str] = {
 }
 
 
-# TODO: Debug console
+# TODO: Debug console (stats, hp, xp from progress-bars)
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
 # TODO: More colors for any chars, center for menu and game
@@ -153,16 +153,21 @@ class StatsPanel(Vertical):
     def sync(self, stats: PlayerStats, floor: int):
         """Update progress-bars by object of PlayerStats"""
         # HP: percentage of the maximum
-        hp_pct = (
-            round((stats.hits / stats.max_hits) * 100) if stats.max_hits else 0
+        # hp_pct = (
+        #     round((stats.hits / stats.max_hits) * 100) if
+        # stats.max_hits else 0
+        # )
+        self.query_one("#hp_bar", ProgressBar).update(
+            total=stats.max_hits, progress=stats.hits
         )
-        self.query_one("#hp_bar", ProgressBar).update(progress=hp_pct)
 
         # XP: the goal depends on the level
         xp_target = stats.level * 20
-        xp_pct = round((stats.xp / xp_target) * 100) if xp_target else 0
+        # xp_pct = round((stats.xp / xp_target) * 100) if xp_target
+        # else 0
         self.query_one("#xp_bar", ProgressBar).update(
-            progress=xp_pct, total=100
+            total=xp_target,
+            progress=stats.xp,
         )
 
         # Text
@@ -194,6 +199,7 @@ class PlayerStats:
 
     def take_damage(self, amount: int) -> bool:
         self.hits -= amount
+        app.notify(f"Take damage: {amount} → hits={self.hits}")
         if self.hits <= 0:
             self.hits = 0
             # If player died:
@@ -602,9 +608,9 @@ class GameState:
 
     def spawn_enemies(self, count: int = 5) -> None:
         variants: list[tuple[str, int, int, int]] = [
-            ("SLIME", 3, 1, 5),
-            ("KOBOLD", 4, 2, 8),
-            ("ZOMBIE", 6, 2, 12),
+            ("SLIME", 3, 2, 5),
+            ("KOBOLD", 4, 3, 8),
+            ("ZOMBIE", 6, 4, 12),
         ]
 
         occupied: set[tuple[int, int]] = {(self.player_x, self.player_y)}
@@ -828,7 +834,6 @@ class RogueApp(App):
             Many widgets
         """
         yield GameScreen(self.game_state)
-        # BUG? yield StatsPanel(id="stats_panel")
         yield Header()
         yield Footer()
 
@@ -883,8 +888,7 @@ class RogueApp(App):
 
         if moved:
             self.screen.query_one("#game_display", GameScreen).refresh_map()
-
-        self._sync_stats()
+            self._sync_stats()
 
         if self.game_state.player_stats.hits <= 0:
             self.notify("GAME OVER!", severity="error")
