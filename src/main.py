@@ -67,7 +67,6 @@ WALKABLE_TERRAIN: set[str] = {
 
 # _DEFAULT_STYLE = Style(color="green")
 
-# TODO: Debug console (stats, hp, xp from progress-bars)
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
 # TODO: Update docstrings
@@ -841,6 +840,33 @@ class GamePlayScreen(Screen):
         yield Footer()
 
 
+class StatsOverlay(Screen):
+    """Player stats"""
+
+    def __init__(self, stats: PlayerStats, floor: int):
+        super().__init__()
+        self.stats: PlayerStats = stats
+        self.floor: int = floor
+
+    def compose(self) -> ComposeResult:
+        xp_needed: int = self.stats.level * 30  # from gain_xp
+        yield Static(
+            content=f"📊 Stats • Floor {self.floor}\n\n"
+            f"❤️  HP: {self.stats.hits} / {self.stats.max_hits}\n"
+            f"⭐ XP: {self.stats.xp} / {xp_needed}\n"
+            f"🎯 Level: {self.stats.level}\n"
+            f"⚔️  Strength: {self.stats.strength}\n"
+            f"🛡️  Armor: {self.stats.armor}\n"
+            f"💰 Gold: {self.stats.gold}\n\n"
+            f"[dim]ESC — close[/]",
+            id="stats_overlay_content",
+        )
+
+    def on_key(self, event: Key) -> None:
+        if event.key == "escape":
+            self.app.pop_screen()
+
+
 # === Main app ===
 class RogueApp(App):
     """Main Application"""
@@ -852,6 +878,7 @@ class RogueApp(App):
     BINDINGS = [
         ("v", "save_game", "Save Game"),
         ("escape", "back_to_menu", "Menu"),
+        ("i", "show_stats", "Stats"),
     ]
 
     def __init__(self) -> None:
@@ -885,6 +912,14 @@ class RogueApp(App):
     def action_back_to_menu(self) -> None:
         self.game_state.save_game()
         self.pop_screen()
+
+    def action_show_stats(self) -> None:
+        self.push_screen(
+            screen=StatsOverlay(
+                stats=self.game_state.player_stats,
+                floor=self.game_state.current_floor,
+            )
+        )
 
     def on_key(self, event: Key) -> None:
         """Reaction to the keys (Input Handler)

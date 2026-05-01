@@ -12,6 +12,20 @@ MainMenu {
     padding: 2 4;
 }
 
+StatsOverlay {
+    align: center middle;
+    background: $surface;
+    border: solid $primary;
+    padding: 1 2;
+}
+
+#stats_overlay_content {
+    width: auto;
+    height: auto;
+    text-align: left;
+    color: $text;
+}
+
 #title {
     width: auto;
     height: auto;
