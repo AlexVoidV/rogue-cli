@@ -52,8 +52,6 @@ WALKABLE_TERRAIN: set[str] = {
 
 
 # TODO: Stats - floor
-# TODO: Components - player, item, enemy
-# TODO: Actions - e - use, y/n - yes/no
 # TODO: Save/Load
 # TODO: Debug console
 # TODO: Dragon on 15 floor, portal after dragon's death to escape
@@ -140,8 +138,6 @@ def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
 
 
 class StatsPanel(Vertical):
-    # BUG: Bars are don't want to be in row
-
     def compose(self) -> ComposeResult:
         with Horizontal(id="bars_row"):
             yield ProgressBar(total=100, id="hp_bar", show_eta=False)
@@ -150,7 +146,7 @@ class StatsPanel(Vertical):
         with Horizontal(id="stats_text_container"):
             yield Static("", id="stats_text")
 
-    def sync(self, stats: PlayerStats):
+    def sync(self, stats: PlayerStats, floor: int):
         """Update progress-bars by object of PlayerStats"""
         # HP: percentage of the maximum
         hp_pct = (
@@ -167,7 +163,7 @@ class StatsPanel(Vertical):
 
         # Text
         self.query_one("#stats_text", Static).update(
-            f"Lvl:{stats.level} STR:{stats.strength} ARM:{stats.armor} [gold1]${stats.gold}"  # noqa: E501
+            f"Floor: {floor} Lvl:{stats.level} STR:{stats.strength} ARM:{stats.armor} [gold1]${stats.gold}"  # noqa: E501
         )
 
 
@@ -692,7 +688,9 @@ class RogueApp(App):
     def _sync_stats(self):
         try:
             panel: StatsPanel = self.query_one("#stats_panel", StatsPanel)
-            panel.sync(self.game_state.player_stats)
+            panel.sync(
+                self.game_state.player_stats, self.game_state.current_floor
+            )
         except Exception:
             pass  # It hasn't been drawn yet
 
@@ -740,6 +738,7 @@ class RogueApp(App):
         ):
             self.game_state.generate_level(self.prefabs, room_count=10)
             self.query_one(GameScreen).refresh_map()
+            self._sync_stats()
             return
 
         if moved:
