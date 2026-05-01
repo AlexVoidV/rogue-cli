@@ -462,9 +462,6 @@ class GameState:
         self.entities.append(self.player)
         self.current_floor += 1
 
-        if self.current_floor == 15:
-            pass
-
         if self.rooms:
             start: Room = self.rooms[0]  # first room (player)
             end: Room = self.rooms[-1]  # last room (stairs)
@@ -476,11 +473,26 @@ class GameState:
             self.map_render: list[str] = [
                 "".join(row) for row in self.map_grid
             ]
-            self.spawn_enemies(count=max(1, len(self.rooms) // 3))
 
-            self.items = []
-            self.spawn_enemies(count=max(1, len(self.rooms) // 3))
-            self.spawn_items(count=random.randint(3, 6))
+            if self.current_floor == 15:
+                # Boss (dragon) floor
+                self.enemies = []
+                self.enemies.append(
+                    Enemy(
+                        end.cx,
+                        end.cy,
+                        "DRAGON",
+                        hits=50,
+                        attack=10,
+                        xp_reward=500,
+                    )
+                )
+            else:
+                # Usual floor
+                self.items = []
+                self.enemies = []
+                self.spawn_enemies(count=max(1, len(self.rooms) // 3))
+                self.spawn_items(count=random.randint(3, 6))
 
     def spawn_items(self, count: int = 5) -> None:
         # Accessed enemies from ENTITY_TILE
