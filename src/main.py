@@ -30,12 +30,24 @@ ENTITY_TILE: dict[str, str] = {
     "ZOMBIE": "Z",
     "MIMIC": "M",
     "DRAGON": "D",
+    # NPCs
+    "TRADER": "T",
     # Pickups
     "MONEY": "$",
     "FOOD": "%",
     "POTION": "!",
     "ARMOR": "=",
     "WEAPON": "^",
+    "KEY": "~",
+}
+
+WALKABLE_TERRAIN: set[str] = {
+    TERRAIN_TILE["FLOOR"],
+    TERRAIN_TILE["OPEN_DOOR"],
+    TERRAIN_TILE["UP_STAIRS"],
+    TERRAIN_TILE["DOWN_STAIRS"],
+    TERRAIN_TILE["TRAP"],
+    TERRAIN_TILE["PORTAL"],
 }
 
 
@@ -337,19 +349,20 @@ class GameState:
         Returns:
             bool: `True` (Success) or `False` (Fail)
         """
-
         nx, ny = self.player_x + dx, self.player_y + dy
 
-        if (
-            0 <= ny < self.height
-            and 0 <= nx < self.width
-            and self.map_grid[ny][nx] != TERRAIN_TILE["WALL"]
-        ):
-            self.player_x, self.player_y = nx, ny
-            # Updating the coordinates of the player entity
-            self.entities[0].x, self.entities[0].y = nx, ny
-            return True
-        return False
+        # 1. Map borders
+        if not (0 <= ny < self.height and 0 <= nx < self.width):
+            return False
+
+        # 2. Checking: the tile should be on the "white list"
+        if self.map_grid[ny][nx] not in WALKABLE_TERRAIN:
+            return False  # Blocks: walls "#", emptiness " ", closed doors "+"
+
+        self.player_x, self.player_y = nx, ny
+        # Updating the coordinates of the player entity
+        self.entities[0].x, self.entities[0].y = nx, ny
+        return True
 
 
 # === The playing field widget ===
@@ -432,5 +445,14 @@ class RogueApp(App):
 
 
 if __name__ == "__main__":
-    app = RogueApp()
-    app.run()
+    # Fast test of map
+    st_test = 0
+    if st_test == 1:
+        print("=== TEST MAP ===")
+        gs = GameState(40, 25)
+        gs.generate_level(load_prefabs("prefabs"))
+        print(gs.render())
+        print("======================\n")
+    else:
+        app = RogueApp()
+        app.run()
