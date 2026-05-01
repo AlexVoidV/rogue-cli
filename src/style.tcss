@@ -1,7 +1,49 @@
+Screen {
+    layout: vertical;
+}
+
 GameScreen {
     width: 100%;
-    height: 100%;
+    height: 1fr;
     background: black;
     color: green;
     text-style: bold;
+}
+
+#stats_panel {
+    width: 100%;
+    height: 5;
+    background: $surface-darken-2;
+    padding: 0 1;
+    /* border-top: solid $accent; */
+}
+
+#hp_bar,
+#xp_bar {
+    height: 1;
+    width: 1fr;
+    /* width: 100%; */
+}
+
+#stats_text_container {
+    height: 1;
+    margin-top: 1;
+}
+
+#stats_text {
+    width: 100%;
+}
+
+#hp_bar .bar--complete {
+    background: red;
+}
+
+#xp_bar .bar--complete {
+    background: yellow;
+    color: black;
+}
+
+Header,
+Footer {
+    height: 3;
 }

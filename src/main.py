@@ -139,6 +139,36 @@ def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
     return door_x, door_y + 1
 
 
+class StatsPanel(Vertical):
+    def compose(self) -> ComposeResult:
+        with Horizontal(id="bars_row"):
+            yield ProgressBar(total=100, id="hp_bar", show_eta=False)
+            yield ProgressBar(total=100, id="xp_bar", show_eta=False)
+
+        with Horizontal(id="stats_text_container"):
+            yield Static("", id="stats_text")
+
+    def sync(self, stats: PlayerStats):
+        """Обновляет бары по объекту PlayerStats"""
+        # HP: percentage of the maximum
+        hp_pct = (
+            round((stats.hits / stats.max_hits) * 100) if stats.max_hits else 0
+        )
+        self.query_one("#hp_bar", ProgressBar).update(progress=hp_pct)
+
+        # XP: the goal depends on the level
+        xp_target = stats.level * 20
+        xp_pct = round((stats.xp / xp_target) * 100) if xp_target else 0
+        self.query_one("#xp_bar", ProgressBar).update(
+            progress=xp_pct, total=100
+        )
+
+        # Text
+        self.query_one("#stats_text", Static).update(
+            f"Lvl:{stats.level} STR:{stats.strength} ARM:{stats.armor} [gold1]${stats.gold}"  # noqa: E501
+        )
+
+
 @dataclass
 class PlayerStats:
     level = 1
@@ -498,20 +528,23 @@ class RogueApp(App):
         )
         self.game_state = GameState(width=80, height=30)
         self.game_state.generate_level(self.prefabs)
+        self._sync_stats()
+
+    def _sync_stats(self):
+        try:
+            panel: StatsPanel = self.query_one("#stats_panel", StatsPanel)
+            panel.sync(self.game_state.player_stats)
+        except Exception:
+            pass  # It hasn't been drawn yet
 
     def compose(self) -> ComposeResult:
         """Build the UI by yielding widgets in display order.
 
         Yields:
-            GameScreen: The main viewport showing the dungeon map.
-
-            Header: Textual's built-in header widget (shows app title).
-
-            Footer: Textual's built-in footer widget
-            (shows key bindings).
+            Many widgets
         """
-
         yield GameScreen(self.game_state)
+        yield StatsPanel(id="stats_panel")
         yield Header()
         yield Footer()
 
@@ -552,6 +585,8 @@ class RogueApp(App):
 
         if moved:
             self.query_one(selector=GameScreen).refresh_map()
+
+        self._sync_stats()
 
 
 if __name__ == "__main__":
