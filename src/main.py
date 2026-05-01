@@ -14,7 +14,6 @@ TERRAIN_TILE: dict[str, str] = {
     "CLOSED_DOOR": "+",
     "OPEN_DOOR": "/",
     # Stairs
-    "UP_STAIRS": "<",
     "DOWN_STAIRS": ">",
     # Special
     "TRAP": "?",
@@ -44,7 +43,6 @@ ENTITY_TILE: dict[str, str] = {
 WALKABLE_TERRAIN: set[str] = {
     TERRAIN_TILE["FLOOR"],
     TERRAIN_TILE["OPEN_DOOR"],
-    TERRAIN_TILE["UP_STAIRS"],
     TERRAIN_TILE["DOWN_STAIRS"],
     TERRAIN_TILE["TRAP"],
     TERRAIN_TILE["PORTAL"],
@@ -342,7 +340,7 @@ class GameState:
         self.player_x, self.player_y = 0, 0
         self.rooms: list[Room] = []
 
-    def generate_level(self, prefabs: dict):
+    def generate_level(self, prefabs: dict, room_count: int = 10):
         """Generate a new dungeon level and place player/stairs.
 
         Steps:
@@ -356,7 +354,7 @@ class GameState:
             by `load_prefabs()`.
         """
         gen = MapGenerator(self.width, self.height, prefabs)
-        self.map_grid, self.rooms = gen.generate(room_count=5)
+        self.map_grid, self.rooms = gen.generate(room_count=room_count)
         self.map_render: list[str] = ["".join(row) for row in self.map_grid]
 
         if self.rooms:
@@ -456,7 +454,7 @@ class RogueApp(App):
         self.prefabs: dict[str, list[list[str]]] = load_prefabs(
             folder="prefabs"
         )
-        self.game_state = GameState(width=40, height=25)
+        self.game_state = GameState(width=80, height=30)
         self.game_state.generate_level(self.prefabs)
 
     def compose(self) -> ComposeResult:
