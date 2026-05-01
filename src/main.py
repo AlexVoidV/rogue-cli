@@ -59,6 +59,7 @@ WALKABLE_TERRAIN: set[str] = {
 # TODO: Actions - e - use, f - attack,
 # y/n - yes/no, i - stats, esc - menu
 # TODO: Save/Load
+# TODO: Debug console
 
 
 # === Map generator ===
@@ -140,6 +141,8 @@ def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
 
 
 class StatsPanel(Vertical):
+    # BUG: Bars are don't want to be in row
+
     def compose(self) -> ComposeResult:
         with Horizontal(id="bars_row"):
             yield ProgressBar(total=100, id="hp_bar", show_eta=False)
@@ -171,13 +174,13 @@ class StatsPanel(Vertical):
 
 @dataclass
 class PlayerStats:
-    level = 1
-    hits = 20
-    max_hits = 20
-    strength = 3
-    armor = 1
-    gold = 0
-    xp = 0
+    level: int = 1
+    hits: int = 20
+    max_hits: int = 20
+    strength: int = 3
+    armor: int = 1
+    gold: int = 0
+    xp: int = 0
 
     def take_damage(self, amount: int) -> bool:
         self.hits -= amount
@@ -206,6 +209,16 @@ class PlayerStats:
 
     def add_gold(self, amount: int):
         self.gold += amount
+
+
+@dataclass
+class Enemy:
+    x: int
+    y: int
+    sprite_type: str
+    hits: int
+    attack: int
+    xp_reward: int
 
 
 class Room:
@@ -411,6 +424,8 @@ class GameState:
         self.player_x, self.player_y = 0, 0
         self.rooms: list[Room] = []
         self.player_stats = PlayerStats()
+        self.player = Entity(0, 0, "PLAYER")
+        self.enemies: list[Enemy] = []
 
     def generate_level(self, prefabs: dict, room_count: int = 10):
         """Generate a new dungeon level and place player/stairs.
@@ -429,21 +444,63 @@ class GameState:
         self.map_grid, self.rooms = gen.generate(room_count=room_count)
         self.map_render: list[str] = ["".join(row) for row in self.map_grid]
         self.entities = []
+        self.player = Entity(
+            x=self.player_x,
+            y=self.player_y,
+            sprite_type="PLAYER",
+        )
+        self.entities.append(self.player)
 
         if self.rooms:
             start: Room = self.rooms[0]  # first room (player)
             end: Room = self.rooms[-1]  # last room (stairs)
 
             self.player_x, self.player_y = start.cx, start.cy
-
-            self.entities.append(
-                Entity(x=self.player_x, y=self.player_y, sprite_type="PLAYER")
-            )
+            self.player.x, self.player.y = self.player_x, self.player_y
 
             self.map_grid[end.cy][end.cx] = TERRAIN_TILE["DOWN_STAIRS"]
             self.map_render: list[str] = [
                 "".join(row) for row in self.map_grid
             ]
+            self.spawn_enemies(count=max(1, len(self.rooms) // 3))
+
+    def spawn_enemies(self, count: int = 5) -> None:
+        variants: list[tuple[str, int, int, int]] = [
+            ("SLIME", 3, 1, 5),
+            ("KOBOLD", 4, 2, 8),
+            ("ZOMBIE", 6, 2, 12),
+        ]
+
+        occupied: set[tuple[int, int]] = {(self.player_x, self.player_y)}
+
+        attempts: int = count * 30
+        placed = 0
+
+        while placed < count and attempts > 0:
+            attempts -= 1
+
+            room: Room = random.choice(self.rooms)
+            x: int = random.randint(room.x + 1, room.x + room.w - 2)
+            y: int = random.randint(room.y + 1, room.y + room.h - 2)
+
+            if (x, y) in occupied:
+                continue
+            if self.map_grid[y][x] != TERRAIN_TILE["FLOOR"]:
+                continue
+
+            kind, hp, attack, xp = random.choice(variants)
+            self.enemies.append(
+                Enemy(
+                    x=x,
+                    y=y,
+                    sprite_type=kind,
+                    hits=hp,
+                    attack=attack,
+                    xp_reward=xp,
+                )
+            )
+            occupied.add((x, y))
+            placed += 1
 
     def render(self) -> str:
         """Compose final display: terrain + entities overlay.
@@ -455,12 +512,25 @@ class GameState:
 
         # Copy the map
         display: list[list[str]] = [list(row) for row in self.map_render]
-        # Draw entities
-        for ent in self.entities:
-            if 0 <= ent.y < len(display) and 0 <= ent.x < len(display[0]):
-                display[ent.y][ent.x] = ENTITY_TILE[ent.sprite_type]
+
+        # Draw enemies
+        for enemy in self.enemies:
+            if 0 <= enemy.y < len(display) and 0 <= enemy.x < len(display[0]):
+                display[enemy.y][enemy.x] = ENTITY_TILE[enemy.sprite_type]
+
+        # Draw player
+        if 0 <= self.player_y < len(display) and 0 <= self.player_x < len(
+            display[0]
+        ):
+            display[self.player_y][self.player_x] = ENTITY_TILE["PLAYER"]
 
         return "\n".join("".join(row).ljust(self.width) for row in display)
+
+    def enemy_at(self, x: int, y: int) -> Enemy | None:
+        for enemy in self.enemies:
+            if enemy.x == x and enemy.y == y:
+                return enemy
+        return None
 
     def move_player(self, dx: int, dy: int) -> bool:
         """Tries to move the player
@@ -485,6 +555,18 @@ class GameState:
         # 2. Checking: the tile should be on the "white list"
         if target not in WALKABLE_TERRAIN:
             return False  # Blocks: walls "#", emptiness " ", closed doors "+"
+
+        enemy: Enemy | None = self.enemy_at(nx, ny)
+        if enemy is not None:
+            enemy.hits -= self.player_stats.strength
+            if enemy.hits <= 0:
+                self.enemies.remove(enemy)
+                self.player_stats.gain_xp(enemy.xp_reward)
+            else:
+                self.player_stats.take_damage(
+                    max(0, enemy.attack - self.player_stats.armor)
+                )
+            return True
 
         self.player_x, self.player_y = nx, ny
         # Updating the coordinates of the player entity
