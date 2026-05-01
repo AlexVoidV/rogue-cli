@@ -796,7 +796,10 @@ class RogueApp(App):
     SCREENS = {
         "main_menu": MainMenu,
     }
-    BINDINGS = [("v", "save_game", "Save Game")]
+    BINDINGS = [
+        ("v", "save_game", "Save Game"),
+        ("escape", "back_to_menu", "Menu"),
+    ]
 
     def __init__(self) -> None:
         super().__init__()
@@ -826,6 +829,10 @@ class RogueApp(App):
             self.notify("Game saved!", timeout=2)
         else:
             self.notify("Save failed!", timeout=3, severity="error")
+
+    def action_back_to_menu(self) -> None:
+        self.game_state.save_game()
+        self.pop_screen()
 
     def on_key(self, event: Key) -> None:
         """Reaction to the keys (Input Handler)
