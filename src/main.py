@@ -1,4 +1,4 @@
-from rich.style import Style
+# from rich.style import Style
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import Static, Footer, Header, ProgressBar, Button
@@ -56,12 +56,12 @@ WALKABLE_TERRAIN: set[str] = {
     TERRAIN_TILE["PORTAL"],
 }
 
-TILE_STYLES: dict[str, Style] = {
-    "#": Style(color="white"),
-    "@": Style(color="green"),
-}
+# TILE_STYLES: dict[str, Style] = {
+#     "#": Style(color="white"),
+#     "@": Style(color="green"),
+# }
 
-_DEFAULT_STYLE = Style(color="green")
+# _DEFAULT_STYLE = Style(color="green")
 
 # TODO: Debug console (stats, hp, xp from progress-bars)
 # TODO: portal after dragon's death to escape
@@ -914,7 +914,13 @@ class RogueApp(App):
             self._sync_stats()
 
         if self.game_state.player_stats.hits <= 0:
-            self.notify("GAME OVER!", severity="error")
+            self.notify("GAME OVER!", severity="error", timeout=3)
+
+            if self.game_state.save_file.exists():
+                self.game_state.save_file.unlink()
+
+            self.pop_screen()
+            return
             # Restart game
             # self.game_state = GameState(width=80, height=30)
             # self.game_state.generate_level(self.prefabs)
