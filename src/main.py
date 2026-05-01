@@ -152,7 +152,7 @@ class StatsPanel(Vertical):
             yield Static("", id="stats_text")
 
     def sync(self, stats: PlayerStats):
-        """Обновляет бары по объекту PlayerStats"""
+        """Update progress-bars by object of PlayerStats"""
         # HP: percentage of the maximum
         hp_pct = (
             round((stats.hits / stats.max_hits) * 100) if stats.max_hits else 0
