@@ -51,15 +51,14 @@ WALKABLE_TERRAIN: set[str] = {
 }
 
 
-# TODO: GameEngine - moves, collision
-# TODO: Stats - level, hits, str, gold, armor, exp, floor
-# TODO: GameState - map, entities, inventory (primitive)
+# TODO: Stats - floor
 # TODO: Components - player, item, enemy
-# TODO: Utils - FOV (fog of war), pathfinding for enemies
-# TODO: Actions - e - use, f - attack,
-# y/n - yes/no, i - stats, esc - menu
+# TODO: Actions - e - use, y/n - yes/no
 # TODO: Save/Load
 # TODO: Debug console
+# TODO: Dragon on 15 floor, portal after dragon's death to escape
+# TODO: Main menu with ratings (gold, kills, max stats, etc.),
+# and load (continue) button and new game button
 
 
 # === Map generator ===
@@ -219,6 +218,13 @@ class Enemy:
     hits: int
     attack: int
     xp_reward: int
+
+
+@dataclass
+class Item:
+    x: int
+    y: int
+    type: str
 
 
 class Room:
@@ -426,6 +432,8 @@ class GameState:
         self.player_stats = PlayerStats()
         self.player = Entity(0, 0, "PLAYER")
         self.enemies: list[Enemy] = []
+        self.items: list[Item] = []
+        self.current_floor = 0
 
     def generate_level(self, prefabs: dict, room_count: int = 10):
         """Generate a new dungeon level and place player/stairs.
@@ -450,6 +458,10 @@ class GameState:
             sprite_type="PLAYER",
         )
         self.entities.append(self.player)
+        self.current_floor += 1
+
+        if self.current_floor == 15:
+            pass
 
         if self.rooms:
             start: Room = self.rooms[0]  # first room (player)
