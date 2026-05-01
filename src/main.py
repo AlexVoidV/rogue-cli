@@ -158,27 +158,24 @@ class StatsPanel(Vertical):
         # stats.max_hits else 0
         # )
         # NEW HP
-        if not stats.max_hits:
-            hp_pct = 0
-        else:
-            hp_pct = round((stats.hits / stats.max_hits) * 100)
+
         self.query_one("#hp_bar", ProgressBar).update(
-            total=100, progress=hp_pct
+            total=stats.max_hits, progress=stats.hits
         )
 
         # XP: the goal depends on the level
-        xp_target = stats.level * 20
+        # xp_target = stats.level * 20
         # xp_pct = round((stats.xp / xp_target) * 100) if xp_target
         # else 0
         # NEW XP
-        xp_target = stats.level * 20
-        if not xp_target:
-            xp_pct = 0
-        else:
-            xp_pct = round((stats.xp / xp_target) * 100)
+        xp_target: int = stats.level * 20
+        # if not xp_target:
+        #     xp_pct = 0
+        # else:
+        #     xp_pct = round((stats.xp / xp_target) * 100)
         self.query_one("#xp_bar", ProgressBar).update(
-            total=100,
-            progress=xp_pct,
+            total=xp_target,
+            progress=stats.xp,
         )
 
         # Text
@@ -210,7 +207,7 @@ class PlayerStats:
 
     def take_damage(self, amount: int) -> bool:
         self.hits -= amount
-        app.notify(f"Take damage: {amount} → hits={self.hits}")
+
         if self.hits <= 0:
             self.hits = 0
             # If player died:
@@ -917,9 +914,9 @@ class RogueApp(App):
             panel.sync(
                 self.game_state.player_stats, self.game_state.current_floor
             )
-        except Exception as e:
+        except Exception as e:  # noqa: F841
             pass  # It hasn't been drawn yet
-            self.app.notify(f"[DEBUG] _sync_stats failed: {e}")
+            # self.notify(f"[DEBUG] _sync_stats failed: {e}")
 
 
 if __name__ == "__main__":
