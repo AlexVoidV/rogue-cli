@@ -157,17 +157,28 @@ class StatsPanel(Vertical):
         #     round((stats.hits / stats.max_hits) * 100) if
         # stats.max_hits else 0
         # )
+        # NEW HP
+        if not stats.max_hits:
+            hp_pct = 0
+        else:
+            hp_pct = round((stats.hits / stats.max_hits) * 100)
         self.query_one("#hp_bar", ProgressBar).update(
-            total=stats.max_hits, progress=stats.hits
+            total=100, progress=hp_pct
         )
 
         # XP: the goal depends on the level
         xp_target = stats.level * 20
         # xp_pct = round((stats.xp / xp_target) * 100) if xp_target
         # else 0
+        # NEW XP
+        xp_target = stats.level * 20
+        if not xp_target:
+            xp_pct = 0
+        else:
+            xp_pct = round((stats.xp / xp_target) * 100)
         self.query_one("#xp_bar", ProgressBar).update(
-            total=xp_target,
-            progress=stats.xp,
+            total=100,
+            progress=xp_pct,
         )
 
         # Text
@@ -190,7 +201,7 @@ class StatsPanel(Vertical):
 @dataclass
 class PlayerStats:
     level: int = 1
-    hits: int = 20
+    hits: int = 5
     max_hits: int = 20
     strength: int = 3
     armor: int = 1
@@ -906,8 +917,9 @@ class RogueApp(App):
             panel.sync(
                 self.game_state.player_stats, self.game_state.current_floor
             )
-        except Exception:
+        except Exception as e:
             pass  # It hasn't been drawn yet
+            self.app.notify(f"[DEBUG] _sync_stats failed: {e}")
 
 
 if __name__ == "__main__":
