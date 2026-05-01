@@ -6,6 +6,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from dataclasses import dataclass
 from typing import cast
+import json
 import sys
 import random
 
@@ -439,6 +440,65 @@ class GameState:
         self.enemies: list[Enemy] = []
         self.items: list[Item] = []
         self.current_floor = 0
+        self.save_file = Path("savegame.json")
+
+    def save_game(self, filepath: str | Path = "savegame.json") -> bool:
+        try:
+            data = {
+                "meta": {
+                    "floor": self.current_floor,
+                },
+                "player": {
+                    "x": self.player_x,
+                    "y": self.player_y,
+                    "stats": self.player_stats.__dict__,
+                },
+                "map": {
+                    "width": self.width,
+                    "height": self.height,
+                    "grid": self.map_grid,
+                },
+                "enemies": [e.__dict__ for e in self.enemies],
+                "items": [i.__dict__ for i in self.items],
+            }
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+                return True
+        except Exception:
+            return False
+
+    def load_game(self, filepath: str | Path = "savegame.json") -> bool:
+        try:
+            if not Path(filepath).exists():
+                return False
+
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # 1. Recovering the map and dimensions
+            map_data = data["map"]
+            self.width = map_data["width"]
+            self.height = map_data["height"]
+            self.map_grid = map_data["grid"]
+            self.map_render = ["".join(row) for row in self.map_grid]
+
+            # 2. Player position and stats
+            pl = data["player"]
+            self.player_x, self.player_y = pl["x"], pl["y"]
+            self.player_stats = PlayerStats(**pl["stats"])
+
+            # 3. Entities, enemies and objects
+            self.player = Entity(self.player_x, self.player_y, "PLAYER")
+            self.entities = [self.player]
+            self.enemies = [Enemy(**e) for e in data["enemies"]]
+            self.items = [Item(**i) for i in data["items"]]
+
+            # 4. Metadata
+            self.current_floor = data["meta"]["floor"]
+
+            return True
+        except Exception:
+            return False
 
     def generate_level(self, prefabs: dict, room_count: int = 10):
         """Generate a new dungeon level and place player/stairs.
@@ -696,9 +756,14 @@ class MainMenu(Screen):
         yield Button("Quit", id="quit")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        app = cast(RogueApp, self.app)
         if event.button.id == "new_game":
-            app = cast(RogueApp, self.app)
             self.app.push_screen(GamePlayScreen(app.game_state))
+        elif event.button.id == "load_game":
+            if app.game_state.load_game():
+                app.push_screen(GamePlayScreen(app.game_state))
+            else:
+                app.notify("File of save is not found!", severity="error")
         elif event.button.id == "quit":
             self.app.exit(return_code=1)
 
@@ -723,6 +788,7 @@ class RogueApp(App):
     SCREENS = {
         "main_menu": MainMenu,
     }
+    BINDINGS = [("v", "save_game", "Save Game")]
 
     def __init__(self) -> None:
         super().__init__()
@@ -755,6 +821,12 @@ class RogueApp(App):
 
     def on_mount(self) -> None:
         self.push_screen(screen="main_menu")
+
+    def action_save_game(self) -> None:
+        if self.game_state.save_game():
+            self.notify("Game saved!", timeout=2)
+        else:
+            self.notify("Save failed!", timeout=3, severity="error")
 
     def on_key(self, event: Key) -> None:
         """Reaction to the keys (Input Handler)
