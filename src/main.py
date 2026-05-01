@@ -4,6 +4,7 @@ from textual.widgets import Static, Footer, Header, ProgressBar, Button
 from textual.events import Key
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
+from rich.text import Text
 from dataclasses import dataclass
 from typing import cast
 import json
@@ -58,7 +59,8 @@ WALKABLE_TERRAIN: set[str] = {
 # TODO: Debug console
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
-# TODO: More colors, center for menu and game
+# TODO: More colors for any chars, center for menu and game
+# TODO: Update docstrings
 
 
 # === Map generator ===
@@ -165,7 +167,18 @@ class StatsPanel(Vertical):
 
         # Text
         self.query_one("#stats_text", Static).update(
-            f"Floor: {floor} Lvl:{stats.level} STR:{stats.strength} ARM:{stats.armor} [gold1]${stats.gold}"  # noqa: E501
+            Text.assemble(
+                ("FLOOR:", "#1696e0"),
+                (f"{floor} ", "#ffffff"),
+                ("LVL:", "#16c444"),
+                (f"{stats.level} ", "#ffffff"),
+                ("STR:", "#e61034"),
+                (f"{stats.strength} ", "#ffffff"),
+                ("ARM:", "#a112c4"),
+                (f"{stats.armor} ", "#ffffff"),
+                ("GOLD:", "#deab14"),
+                (f"{stats.gold} ", "#ffffff"),
+            )
         )
 
 

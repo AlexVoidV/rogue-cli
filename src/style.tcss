@@ -50,6 +50,9 @@ ProgressBar {
 
 #stats_text {
     width: 100%;
+    color: white;
+    dock: bottom;
+    content-align: center middle;
 }
 
 #hp_bar .bar--complete {
