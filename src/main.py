@@ -58,6 +58,7 @@ WALKABLE_TERRAIN: set[str] = {
 # TODO: Utils - FOV (fog of war), pathfinding for enemies
 # TODO: Actions - e - use, f - attack,
 # y/n - yes/no, i - stats, esc - menu
+# TODO: Save/Load
 
 
 # === Map generator ===
@@ -109,6 +110,8 @@ def carve_corridor_wide(
     # Horizontal segment
     x_start, x_end = min(x1, x2), max(x1, x2)
     for x in range(x_start, x_end + 1):
+        if not (0 <= x < w):
+            continue
         for dy in range(-half, half + 1):
             ny: int = y1 + dy
             if 0 <= ny < h:
@@ -117,6 +120,8 @@ def carve_corridor_wide(
     # Vertical segment
     y_start, y_end = min(y1, y2), max(y1, y2)
     for y in range(y_start, y_end + 1):
+        if not (0 <= y < h):
+            continue
         for dx in range(-half, half + 1):
             nx: int = x2 + dx
             if 0 <= nx < w:
