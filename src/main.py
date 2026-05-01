@@ -730,13 +730,13 @@ class GameState:
 class GameScreen(Static):
     """The widget that draws the map"""
 
-    def __init__(self, game_state: GameState) -> None:
+    def __init__(self, game_state: GameState, **kwargs) -> None:
         """
         Args:
             game_state (GameState): The GameState instance that holds
             the current map, entities, and player position
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.game_state: GameState = game_state
         self.update(content=self.game_state.render())  # First render
 
@@ -757,24 +757,32 @@ class MainMenu(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         app = cast(RogueApp, self.app)
+
         if event.button.id == "new_game":
-            self.app.push_screen(GamePlayScreen(app.game_state))
+            app.game_state = GameState(width=80, height=30)
+            app.game_state.generate_level(app.prefabs)
+            app.push_screen(GamePlayScreen(app.game_state, app.prefabs))
+
         elif event.button.id == "load_game":
             if app.game_state.load_game():
-                app.push_screen(GamePlayScreen(app.game_state))
+                app.push_screen(GamePlayScreen(app.game_state, app.prefabs))
             else:
                 app.notify("File of save is not found!", severity="error")
+
         elif event.button.id == "quit":
             self.app.exit(return_code=1)
 
 
 class GamePlayScreen(Screen):
-    def __init__(self, game_state: GameState):
+    def __init__(
+        self, game_state: GameState, prefabs: dict[str, list[list[str]]]
+    ):
         super().__init__()
         self.game_state: GameState = game_state
+        self.prefabs: dict[str, list[list[str]]] = prefabs
 
     def compose(self) -> ComposeResult:
-        yield GameScreen(self.game_state)
+        yield GameScreen(self.game_state, id="game_display")
         yield StatsPanel(id="stats_panel")
         yield Header()
         yield Footer()
@@ -798,15 +806,6 @@ class RogueApp(App):
         self.game_state = GameState(width=80, height=30)
         self.game_state.generate_level(self.prefabs)
         self._sync_stats()
-
-    def _sync_stats(self):
-        try:
-            panel: StatsPanel = self.query_one("#stats_panel", StatsPanel)
-            panel.sync(
-                self.game_state.player_stats, self.game_state.current_floor
-            )
-        except Exception:
-            pass  # It hasn't been drawn yet
 
     def compose(self) -> ComposeResult:
         """Build the UI by yielding widgets in display order.
@@ -860,12 +859,12 @@ class RogueApp(App):
             == TERRAIN_TILE["DOWN_STAIRS"]
         ):
             self.game_state.generate_level(self.prefabs, room_count=10)
-            self.query_one(GameScreen).refresh_map()
+            self.screen.query_one("#game_display", GameScreen).refresh_map()
             self._sync_stats()
             return
 
         if moved:
-            self.query_one(selector=GameScreen).refresh_map()
+            self.screen.query_one("#game_display", GameScreen).refresh_map()
 
         self._sync_stats()
 
@@ -876,6 +875,15 @@ class RogueApp(App):
             # self.game_state.generate_level(self.prefabs)
             # self.query_one(GameScreen).game_state = self.game_state
             # self.query_one(GameScreen).refresh_map()
+
+    def _sync_stats(self) -> None:
+        try:
+            panel: StatsPanel = self.query_one("#stats_panel", StatsPanel)
+            panel.sync(
+                self.game_state.player_stats, self.game_state.current_floor
+            )
+        except Exception:
+            pass  # It hasn't been drawn yet
 
 
 if __name__ == "__main__":
