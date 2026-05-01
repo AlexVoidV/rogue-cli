@@ -356,24 +356,22 @@ class GameState:
         gen = MapGenerator(self.width, self.height, prefabs)
         self.map_grid, self.rooms = gen.generate(room_count=room_count)
         self.map_render: list[str] = ["".join(row) for row in self.map_grid]
+        self.entities = []
 
         if self.rooms:
-            # The player in first room
-            start: Room = self.rooms[0]
+            start: Room = self.rooms[0]  # first room (player)
+            end: Room = self.rooms[-1]  # last room (stairs)
+
             self.player_x, self.player_y = start.cx, start.cy
-            self.entities = []
+
             self.entities.append(
                 Entity(x=self.player_x, y=self.player_y, sprite_type="PLAYER")
             )
 
-            # The stairs in the last room
-            end: Room = self.rooms[-1]
             self.map_grid[end.cy][end.cx] = TERRAIN_TILE["DOWN_STAIRS"]
-            self.map_render[end.cy] = (
-                self.map_render[end.cy][: end.cx]
-                + TERRAIN_TILE["DOWN_STAIRS"]
-                + self.map_render[end.cy][end.cx + 1 :]
-            )
+            self.map_render: list[str] = [
+                "".join(row) for row in self.map_grid
+            ]
 
     def render(self) -> str:
         """Compose final display: terrain + entities overlay.
@@ -411,13 +409,15 @@ class GameState:
         if not (0 <= ny < self.height and 0 <= nx < self.width):
             return False
 
+        target: str = self.map_grid[ny][nx]
         # 2. Checking: the tile should be on the "white list"
-        if self.map_grid[ny][nx] not in WALKABLE_TERRAIN:
+        if target not in WALKABLE_TERRAIN:
             return False  # Blocks: walls "#", emptiness " ", closed doors "+"
 
         self.player_x, self.player_y = nx, ny
         # Updating the coordinates of the player entity
         self.entities[0].x, self.entities[0].y = nx, ny
+
         return True
 
 
@@ -479,7 +479,6 @@ class RogueApp(App):
         Args:
             event (Key): an object with information about the key
         """
-
         UP_KEYS: set[str] = {"up", "w", "k"}
         DOWN_KEYS: set[str] = {"down", "s", "j"}
         LEFT_KEYS: set[str] = {"left", "a", "h"}
@@ -495,6 +494,19 @@ class RogueApp(App):
             moved: bool = self.game_state.move_player(-1, 0)
         elif event.key in RIGHT_KEYS:
             moved: bool = self.game_state.move_player(1, 0)
+
+        if not moved:
+            return
+
+        if (
+            self.game_state.map_grid[self.game_state.player_y][
+                self.game_state.player_x
+            ]
+            == TERRAIN_TILE["DOWN_STAIRS"]
+        ):
+            self.game_state.generate_level(self.prefabs, room_count=10)
+            self.query_one(GameScreen).refresh_map()
+            return
 
         if moved:
             self.query_one(selector=GameScreen).refresh_map()
