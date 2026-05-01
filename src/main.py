@@ -1,7 +1,9 @@
 from pathlib import Path
 from textual.app import App, ComposeResult
-from textual.widgets import Static, Footer, Header
+from textual.widgets import Static, Footer, Header, ProgressBar
 from textual.events import Key
+from textual.containers import Horizontal, Vertical
+from dataclasses import dataclass
 import random
 
 
@@ -135,6 +137,45 @@ def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
         return door_x, door_y - 1
     # lower wall
     return door_x, door_y + 1
+
+
+@dataclass
+class PlayerStats:
+    level = 1
+    hits = 20
+    max_hits = 20
+    strength = 3
+    armor = 1
+    gold = 0
+    xp = 0
+
+    def take_damage(self, amount: int) -> bool:
+        self.hits -= amount
+        if self.hits <= 0:
+            self.hits = 0
+            # If player died:
+            return True
+        return False
+
+    def heal(self, amount: int) -> int:
+        old: int = self.hits
+        self.hits: int = min(self.max_hits, self.hits + amount)
+        return self.hits - old
+
+    def gain_xp(self, amount: int) -> bool:
+        self.xp += amount
+        # Each level requires 20 more XP
+        xp_needed = self.level * 20
+        if self.xp >= xp_needed:
+            self.xp -= xp_needed
+            self.level += 1
+            self.max_hits += 5  # Bonus by level
+            self.hits = self.max_hits  # Full heal by level-up
+            return True
+        return False
+
+    def add_gold(self, amount: int):
+        self.gold += amount
 
 
 class Room:
@@ -339,6 +380,7 @@ class GameState:
         self.entities: list[Entity] = []
         self.player_x, self.player_y = 0, 0
         self.rooms: list[Room] = []
+        self.player_stats = PlayerStats()
 
     def generate_level(self, prefabs: dict, room_count: int = 10):
         """Generate a new dungeon level and place player/stairs.
