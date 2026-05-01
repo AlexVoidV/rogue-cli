@@ -209,6 +209,12 @@ class PlayerStats:
     def add_gold(self, amount: int):
         self.gold += amount
 
+    def add_armor(self, amount: int):
+        self.armor += amount
+
+    def add_strength(self, amount: int):
+        self.strength += amount
+
 
 @dataclass
 class Enemy:
@@ -476,6 +482,42 @@ class GameState:
             ]
             self.spawn_enemies(count=max(1, len(self.rooms) // 3))
 
+            self.items = []
+            self.spawn_enemies(count=max(1, len(self.rooms) // 3))
+            self.spawn_items(count=random.randint(3, 6))
+
+    def spawn_items(self, count: int = 5) -> None:
+        # Accessed enemies from ENTITY_TILE
+        item_types: list[str] = ["MONEY", "FOOD", "POTION", "ARMOR", "WEAPON"]
+
+        occupied: set[tuple[int, int]] = {(e.x, e.y) for e in self.enemies} | {
+            (self.player_x, self.player_y)
+        }
+
+        placed = 0
+        attempts: int = count * 20
+        while placed < count and attempts > 0:
+            attempts -= 1
+            room: Room = random.choice(self.rooms)
+            x: int = random.randint(room.x + 1, room.x + room.w - 2)
+            y: int = random.randint(room.y + 1, room.y + room.h - 2)
+
+            if (x, y) in occupied or self.map_grid[y][x] != TERRAIN_TILE[
+                "FLOOR"
+            ]:
+                continue
+
+            new_item = Item(x=x, y=y, type=random.choice(item_types))
+            self.items.append(new_item)
+            occupied.add((x, y))
+            placed += 1
+
+    def item_at(self, x: int, y: int) -> Item | None:
+        for item in self.items:
+            if item.x == x and item.y == y:
+                return item
+        return None
+
     def spawn_enemies(self, count: int = 5) -> None:
         variants: list[tuple[str, int, int, int]] = [
             ("SLIME", 3, 1, 5),
@@ -530,6 +572,11 @@ class GameState:
             if 0 <= enemy.y < len(display) and 0 <= enemy.x < len(display[0]):
                 display[enemy.y][enemy.x] = ENTITY_TILE[enemy.sprite_type]
 
+        # Draw items
+        for item in self.items:
+            if 0 <= item.y < len(display) and 0 <= item.x < len(display[0]):
+                display[item.y][item.x] = ENTITY_TILE[item.type]
+
         # Draw player
         if 0 <= self.player_y < len(display) and 0 <= self.player_x < len(
             display[0]
@@ -581,6 +628,24 @@ class GameState:
             return True
 
         self.player_x, self.player_y = nx, ny
+
+        # Items logic
+        item: Item | None = self.item_at(nx, ny)
+        if item:
+            if item.type == "MONEY":
+                self.player_stats.add_gold(random.randint(1, 10))
+            elif item.type == "POTION":
+                self.player_stats.heal(5)
+            elif item.type == "FOOD":
+                self.player_stats.gain_xp(5)
+            elif item.type == "ARMOR":
+                self.player_stats.add_armor(1)
+            elif item.type == "WEAPON":
+                self.player_stats.add_strength(1)
+
+            # Delete item after pickup
+            self.items.remove(item)
+
         # Updating the coordinates of the player entity
         self.entities[0].x, self.entities[0].y = nx, ny
 
