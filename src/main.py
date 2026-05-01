@@ -1,9 +1,12 @@
 from pathlib import Path
 from textual.app import App, ComposeResult
-from textual.widgets import Static, Footer, Header, ProgressBar
+from textual.widgets import Static, Footer, Header, ProgressBar, Button
 from textual.events import Key
 from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
 from dataclasses import dataclass
+from typing import cast
+import sys
 import random
 
 
@@ -685,11 +688,41 @@ class GameScreen(Static):
         self.update(content=self.game_state.render())
 
 
+class MainMenu(Screen):
+    def compose(self) -> ComposeResult:
+        yield Static("Rogue", id="title")
+        yield Button("New Game", id="new_game")
+        yield Button("Load Game", id="load_game")
+        yield Button("Quit", id="quit")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "new_game":
+            app = cast(RogueApp, self.app)
+            self.app.push_screen(GamePlayScreen(app.game_state))
+        elif event.button.id == "quit":
+            self.app.exit(return_code=1)
+
+
+class GamePlayScreen(Screen):
+    def __init__(self, game_state: GameState):
+        super().__init__()
+        self.game_state: GameState = game_state
+
+    def compose(self) -> ComposeResult:
+        yield GameScreen(self.game_state)
+        yield StatsPanel(id="stats_panel")
+        yield Header()
+        yield Footer()
+
+
 # === Main app ===
 class RogueApp(App):
     """Main Application"""
 
     CSS_PATH = "style.tcss"
+    SCREENS = {
+        "main_menu": MainMenu,
+    }
 
     def __init__(self) -> None:
         super().__init__()
@@ -719,6 +752,9 @@ class RogueApp(App):
         yield StatsPanel(id="stats_panel")
         yield Header()
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.push_screen(screen="main_menu")
 
     def on_key(self, event: Key) -> None:
         """Reaction to the keys (Input Handler)
@@ -782,3 +818,4 @@ if __name__ == "__main__":
     else:
         app = RogueApp()
         app.run()
+        sys.exit(app.return_code)
