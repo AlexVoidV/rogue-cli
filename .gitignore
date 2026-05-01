@@ -67,3 +67,4 @@ venv.bak/
 ### Personal ###
 demo*.py
 cliff.toml
+savegame.json
