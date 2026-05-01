@@ -7,6 +7,7 @@ GameScreen {
     height: 1fr;
     background: black;
     color: green;
+    text-align: center;         
     text-style: bold;
 }
 
@@ -21,26 +22,28 @@ GameScreen {
 #bars_row {
     height: 3;
     width: 100%;
+    align-horizontal: center;
 }
 
 ProgressBar {
-    width: 50%;
+    /* width: 50%; */
+    width: auto;
 }
 
-#hp_bar,
-#xp_bar {
-    height: 1;
-    width: 1fr;
-    margin: 0 !important;
-    padding: 0 !important;
+#hp_bar, #xp_bar {
+    /* height: 1; */
+    margin-right: 1;
+    width: 20;
+    /* margin: 0 !important;
+    padding: 0 !important; */
 }
 
-#hp_bar {
+/* #hp_bar {
     margin-right: 0;
-}
+} */
 
 #xp_bar {
-    margin-left: 0;
+    margin-right: 0;
 }
 
 #stats_text_container {
