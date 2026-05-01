@@ -18,11 +18,25 @@ GameScreen {
     /* border-top: solid $accent; */
 }
 
+#bars_row {
+    height: 1;
+    width: 100%;
+}
+
 #hp_bar,
 #xp_bar {
     height: 1;
     width: 1fr;
-    /* width: 100%; */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#hp_bar {
+    margin-right: 0;
+}
+
+#xp_bar {
+    margin-left: 0;
 }
 
 #stats_text_container {
