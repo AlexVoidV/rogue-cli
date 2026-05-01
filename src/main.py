@@ -1,3 +1,4 @@
+from rich.style import Style
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import Static, Footer, Header, ProgressBar, Button
@@ -55,11 +56,16 @@ WALKABLE_TERRAIN: set[str] = {
     TERRAIN_TILE["PORTAL"],
 }
 
+TILE_STYLES: dict[str, Style] = {
+    "#": Style(color="white"),
+    "@": Style(color="green"),
+}
+
+_DEFAULT_STYLE = Style(color="green")
 
 # TODO: Debug console (stats, hp, xp from progress-bars)
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
-# TODO: More colors for any chars, center for menu and game
 # TODO: Update docstrings
 
 
@@ -679,6 +685,15 @@ class GameState:
         ):
             display[self.player_y][self.player_x] = ENTITY_TILE["PLAYER"]
 
+        # output = Text(no_wrap=True, overflow="ellipsis")
+        # append = output.append
+
+        # for row in display:
+        #     for char in row:
+        #         append(char, TILE_STYLES.get(char, _DEFAULT_STYLE))
+        #     append("\n")
+
+        # output
         return "\n".join("".join(row).ljust(self.width) for row in display)
 
     def enemy_at(self, x: int, y: int) -> Enemy | None:
