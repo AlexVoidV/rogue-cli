@@ -128,6 +128,17 @@ def carve_corridor_wide(
                 grid[y][nx] = TERRAIN_TILE["FLOOR"]
 
 
+def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
+    if door_x == room.x:  # left wall
+        return door_x - 1, door_y
+    if door_x == room.x + room.w - 1:  # right wall
+        return door_x + 1, door_y
+    if door_y == room.y:  # upper wall
+        return door_x, door_y - 1
+    # lower wall
+    return door_x, door_y + 1
+
+
 class Room:
     """
     Represents a rectangular room placed on the map.
@@ -172,6 +183,30 @@ class Room:
             or self.y + self.h + padding <= other.y
             or other.y + other.h + padding <= self.y
         )
+
+    def door_position(self, other: "Room") -> tuple[int, int]:
+        horizontal: bool = abs(self.cx - other.cx) >= abs(self.cy - other.cy)
+
+        if horizontal:
+            # left or right wall
+            x = self.x if self.cx > other.cx else self.x + self.w - 1
+
+            y1 = self.y + 1
+            y2 = self.y + self.h - 2
+            if y1 > y2:
+                y1 = y2 = self.cy  # for small room
+            y = random.randint(y1, y2)
+        else:
+            # upper or lower wall
+            y = self.y if self.cy > other.cy else self.y + self.h - 1
+
+            x1 = self.x + 1
+            x2 = self.x + self.w - 2
+            if x1 > x2:
+                x1 = x2 = self.cx  # for small room
+            x = random.randint(x1, x2)
+
+        return x, y
 
 
 class MapGenerator:
@@ -241,9 +276,26 @@ class MapGenerator:
             self.rooms.append(new_room)
 
         # Connect rooms sequentially with L-shaped corridors
+        corridor_width = 1
+
         for i in range(len(self.rooms) - 1):
             r1, r2 = self.rooms[i], self.rooms[i + 1]
-            carve_corridor_wide(self.grid, r1.cx, r1.cy, r2.cx, r2.cy, width=3)
+
+            d1x, d1y = r1.door_position(r2)
+            d2x, d2y = r2.door_position(r1)
+
+            # Place the doors only on upper walls of rooms
+            self.grid[d1y][d1x] = TERRAIN_TILE["OPEN_DOOR"]
+            self.grid[d2y][d2x] = TERRAIN_TILE["OPEN_DOOR"]
+
+            # Build the corridor not through the doors,
+            # but from the cage outside the room
+            s1x, s1y = outside_point(r1, d1x, d1y)
+            s2x, s2y = outside_point(r2, d2x, d2y)
+
+            carve_corridor_wide(
+                self.grid, s1x, s1y, s2x, s2y, width=corridor_width
+            )
 
         return self.grid, self.rooms
 
@@ -311,6 +363,7 @@ class GameState:
             # The player in first room
             start: Room = self.rooms[0]
             self.player_x, self.player_y = start.cx, start.cy
+            self.entities = []
             self.entities.append(
                 Entity(x=self.player_x, y=self.player_y, sprite_type="PLAYER")
             )
