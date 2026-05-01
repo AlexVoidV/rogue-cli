@@ -24,8 +24,8 @@ TERRAIN_TILE: dict[str, str] = {
     # Stairs
     "DOWN_STAIRS": ">",
     # Special
-    "TRAP": "?",
-    "PORTAL": "X",
+    "TRAP": "?",  # random damage
+    "PORTAL": "X",  # victory
 }
 
 ENTITY_TILE: dict[str, str] = {
@@ -36,9 +36,13 @@ ENTITY_TILE: dict[str, str] = {
     "KOBOLD": "K",
     "ZOMBIE": "Z",
     "MIMIC": "M",
+    "BANDIT": "B",
+    "GHOST": "G",
+    "DEMON": "6",
     "DRAGON": "D",
     # NPCs
     "TRADER": "T",
+    "WANDERER": "W",
     # Pickups
     "MONEY": "$",
     "FOOD": "%",
@@ -67,6 +71,9 @@ WALKABLE_TERRAIN: set[str] = {
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
 # TODO: Update docstrings
+# TODO: NPC and dialogs, trading window
+# TODO: Traps
+# TODO: Locked doors and keys
 
 
 # === Map generator ===
@@ -227,13 +234,18 @@ class PlayerStats:
 
     def gain_xp(self, amount: int) -> bool:
         self.xp += amount
-        # Each level requires 20 more XP
-        xp_needed = self.level * 20
+        # Each level requires 30 more XP
+        xp_needed: int = self.level * 30
         if self.xp >= xp_needed:
             self.xp -= xp_needed
             self.level += 1
-            self.max_hits += 5  # Bonus by level
-            self.hits = self.max_hits  # Full heal by level-up
+            self.max_hits += 2  # Bonus by level
+
+            # DEPRECATED: self.hits: int = self.max_hits
+            heal_amount: int = max(3, self.max_hits // 3)
+            self.hits: int = min(
+                self.max_hits, self.hits + heal_amount
+            )  # Heal by level-up
             return True
         return False
 
@@ -578,7 +590,7 @@ class GameState:
                         "DRAGON",
                         hits=50,
                         attack=10,
-                        xp_reward=500,
+                        xp_reward=150,
                     )
                 )
             else:
@@ -622,9 +634,10 @@ class GameState:
 
     def spawn_enemies(self, count: int = 5) -> None:
         variants: list[tuple[str, int, int, int]] = [
-            ("SLIME", 3, 2, 5),
-            ("KOBOLD", 4, 3, 8),
-            ("ZOMBIE", 6, 4, 12),
+            # (type, hits, attack, xp_reward)
+            ("SLIME", 6, 2, 2),
+            ("KOBOLD", 8, 3, 4),
+            ("ZOMBIE", 12, 4, 6),
         ]
 
         occupied: set[tuple[int, int]] = {(self.player_x, self.player_y)}
@@ -749,9 +762,9 @@ class GameState:
             if item.type == "MONEY":
                 self.player_stats.add_gold(random.randint(1, 10))
             elif item.type == "POTION":
-                self.player_stats.heal(5)
+                self.player_stats.heal(4)
             elif item.type == "FOOD":
-                self.player_stats.gain_xp(5)
+                self.player_stats.heal(2)
             elif item.type == "ARMOR":
                 self.player_stats.add_armor(1)
             elif item.type == "WEAPON":
