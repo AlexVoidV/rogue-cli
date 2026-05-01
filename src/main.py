@@ -44,12 +44,25 @@ ENTITY_TILE: dict[str, str] = {
 # TODO: GameState - map, entities, inventory (primitive)
 # TODO: Components - player, item, enemy
 # TODO: Utils - FOV (fog of war), pathfinding for enemies
-# TODO: Movements - e - use, f - attack,
+# TODO: Actions - e - use, f - attack,
 # y/n - yes/no, i - stats, esc - menu
 
 
 # === Map generator ===
 def load_prefabs(folder: str) -> dict[str, list[list[str]]]:
+    """
+    Load room prefabs from `.txt` files in a folder.
+
+    Each file becomes a 2D list of characters (grid).
+    Filename without extension is used as the prefab name.
+
+    Args:
+        folder (str): Path to folder containing `.txt` prefab files
+
+    Returns:
+        dict[str, list[list[str]]]: Dictionary mapping prefab
+        names to 2D grids.
+    """
     cache: dict[str, list[list[str]]] = {}
     for p in Path(folder).glob(pattern="*.txt"):
         with open(file=p, encoding="utf-8") as f:
@@ -60,6 +73,24 @@ def load_prefabs(folder: str) -> dict[str, list[list[str]]]:
 def carve_corridor_wide(
     grid: list[list[str]], x1: int, y1: int, x2: int, y2: int, width: int = 3
 ):
+    """
+    Carve an L-shaped corridor between two points.
+
+    Path: horizontal first (x1 → x2 at y1),
+    then vertical (y1 → y2 at x2).
+
+    Corridor width applies symmetrically around the center line.
+
+    Args:
+        grid (list[list[str]]): 2D terrain grid to modify in-place
+
+        x1 (int), y1 (int): Start coordinates (e.g., center of room A)
+
+        x2 (int), y2 (int): End coordinates (e.g., center of room B)
+
+        width (int, optional): Corridor thickness in
+        tiles (1 or 2 recommended). Defaults to 3.
+    """
     h, w = len(grid), len(grid[0])
     half: int = width // 2
 
@@ -81,11 +112,43 @@ def carve_corridor_wide(
 
 
 class Room:
+    """
+    Represents a rectangular room placed on the map.
+
+    Stores position, size, and pre-calculated center point
+    for easy corridor connection.
+    """
+
     def __init__(self, x: int, y: int, w: int, h: int):
+        """
+        Args:
+            x (int), y (int): Top-left corner coordinates
+
+            w (int), h (int): Room dimensions (width, height)
+        """
         self.x, self.y, self.w, self.h = x, y, w, h
         self.cx, self.cy = x + w // 2, y + h // 2
 
     def overlaps(self, other: "Room", padding: int = 3) -> bool:
+        """
+        Check if this room overlaps another (with optional padding).
+
+        Uses AABB collision detection. Padding ensures space
+        between rooms for corridors.
+
+        Args:
+            other (Room): The other Room object to check collision
+            against.
+
+            padding (int, optional): Minimum gap (in tiles) to maintain
+                between the edges of the two rooms. Defaults to 3.
+
+        Returns:
+            bool: `True` if the rooms overlap
+            (including the padding zone), meaning they cannot both
+            be placed on the map. `False` if the rooms are
+            sufficiently separated and can coexist.
+        """
         return not (
             self.x + self.w + padding <= other.x
             or other.x + other.w + padding <= self.x
@@ -95,9 +158,30 @@ class Room:
 
 
 class MapGenerator:
+    """
+    Generates a dungeon by placing prefabs and connecting them.
+
+    Algorithm:
+    1. Place N rooms at random non-overlapping positions
+    2. Connect rooms sequentially with L-shaped corridors
+    3. Return final grid and list of placed rooms
+    """
+
     def __init__(
         self, width: int = 40, height: int = 25, prefabs: dict | None = None
     ):
+        """
+        Args:
+            width (int, optional): Width of the generated map in tiles
+            Defaults to 40.
+
+            height (int, optional): Height of the generated map in tiles
+            Defaults to 25.
+
+            prefabs (dict | None, optional): Dictionary of pre-made room
+            templates.
+            Defaults to None.
+        """
         self.width: int = width
         self.height: int = height
         self.prefabs: dict = prefabs or {}
@@ -109,6 +193,16 @@ class MapGenerator:
     def generate(
         self, room_count: int = 5
     ) -> tuple[list[list[str]], list[Room]]:
+        """Run the dungeon generation algorithm.
+
+        Args:
+            room_count (int, optional): Target number of rooms to place.
+            Defaults to 5.
+
+        Returns:
+            tuple[list[list[str]], list[Room]]:
+            (final 2D grid, list of placed Room objects)
+        """
         attempts: int = room_count * 15
         for _ in range(attempts):
             if len(self.rooms) >= room_count:
@@ -129,7 +223,7 @@ class MapGenerator:
                     self.grid[y + dy][x + dx] = char
             self.rooms.append(new_room)
 
-        # Connect the rooms with wide corridors
+        # Connect rooms sequentially with L-shaped corridors
         for i in range(len(self.rooms) - 1):
             r1, r2 = self.rooms[i], self.rooms[i + 1]
             carve_corridor_wide(self.grid, r1.cx, r1.cy, r2.cx, r2.cy, width=3)
@@ -139,15 +233,38 @@ class MapGenerator:
 
 # === Game State ===
 class Entity:
+    """
+    Base class for anything that exists on the map
+    (player, monsters, items).
+
+    Stores position and sprite type; rendering/collision
+    logic is handled by GameState.
+    """
+
     def __init__(self, x: int, y: int, sprite_type: str):
+        """
+        Args:
+            x (int): X-coordinate (column) where the entity is placed
+
+            y (int): Y-coordinate (row) where the entity is placed
+
+            sprite_type (str): Key name from the `ENTITY_TILE`
+            dictionary that determines which character represents this
+            entity
+        """
         self.x, self.y = x, y
         self.sprite_type: str = sprite_type
 
 
 class GameState:
-    """The class (drawing) of the game state"""
+    """Initialize the game state with map dimensions"""
 
     def __init__(self, width: int = 40, height: int = 25):
+        """
+        Args:
+            width (int, optional): Map width in tiles. Defaults to 40.
+            height (int, optional): Map height in tiles. Defaults to 25.
+        """
         self.width: int = width
         self.height: int = height
         self.map_grid: list[list[str]] = []  # 2D for logic
@@ -157,6 +274,18 @@ class GameState:
         self.rooms: list[Room] = []
 
     def generate_level(self, prefabs: dict):
+        """Generate a new dungeon level and place player/stairs.
+
+        Steps:
+        1. Create MapGenerator and run generate()
+        2. Place player in center of first room
+        3. Place down-stairs in center of last room
+        4. Update map_render for display
+
+        Args:
+            prefabs (dict): Dictionary of prefab templates, as returned
+            by `load_prefabs()`.
+        """
         gen = MapGenerator(self.width, self.height, prefabs)
         self.map_grid, self.rooms = gen.generate(room_count=5)
         self.map_render: list[str] = ["".join(row) for row in self.map_grid]
@@ -179,10 +308,11 @@ class GameState:
             )
 
     def render(self) -> str:
-        """Takes a list of strings and connects them via a `\\n`
+        """Compose final display: terrain + entities overlay.
 
         Returns:
-            str: The string to render
+            str: Multi-line string with .ljust() padding
+            to preserve alignment in Textual.
         """
 
         # Copy the map
@@ -209,6 +339,7 @@ class GameState:
         """
 
         nx, ny = self.player_x + dx, self.player_y + dy
+
         if (
             0 <= ny < self.height
             and 0 <= nx < self.width
@@ -223,14 +354,14 @@ class GameState:
 
 # === The playing field widget ===
 class GameScreen(Static):
-    """The widget that draws the map
-
-    Args:
-        Static (Static): ready-made Textual widget for displaying static
-        text
-    """
+    """The widget that draws the map"""
 
     def __init__(self, game_state: GameState) -> None:
+        """
+        Args:
+            game_state (GameState): The GameState instance that holds
+            the current map, entities, and player position
+        """
         super().__init__()
         self.game_state: GameState = game_state
         self.update(content=self.game_state.render())  # First render
@@ -245,11 +376,7 @@ class GameScreen(Static):
 
 # === Main app ===
 class RogueApp(App):
-    """Main Application
-
-    Args:
-        App (App): the main Textual class
-    """
+    """Main Application"""
 
     CSS_PATH = "style.tcss"
 
@@ -262,15 +389,15 @@ class RogueApp(App):
         self.game_state.generate_level(self.prefabs)
 
     def compose(self) -> ComposeResult:
-        """A special Textual method that shows widgets
-
-        Returns:
-            ComposeResult: a widget that builds an interface using other
-            widgets
+        """Build the UI by yielding widgets in display order.
 
         Yields:
-            Iterator[ComposeResult]: returns the container widget,
-            saving the state of all variables
+            GameScreen: The main viewport showing the dungeon map.
+
+            Header: Textual's built-in header widget (shows app title).
+
+            Footer: Textual's built-in footer widget
+            (shows key bindings).
         """
 
         yield GameScreen(self.game_state)
