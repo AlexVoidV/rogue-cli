@@ -1,4 +1,3 @@
-# from rich.style import Style
 from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import Static, Footer, Header, ProgressBar, Button
@@ -24,32 +23,33 @@ TERRAIN_TILE: dict[str, str] = {
     # Stairs
     "DOWN_STAIRS": ">",
     # Special
-    "TRAP": "?",  # random damage
-    "PORTAL": "X",  # victory
+    "TRAP": "?",  # Random damage
+    "PORTAL": "X",  # Victory
 }
 
 ENTITY_TILE: dict[str, str] = {
     # Player
     "PLAYER": "@",
     # Monsters
-    "SLIME": "S",
-    "KOBOLD": "K",
-    "ZOMBIE": "Z",
-    "MIMIC": "M",
-    "BANDIT": "B",
-    "GHOST": "G",
-    "DEMON": "6",
-    "DRAGON": "D",
+    "SLIME": "S",  # A weak enemy
+    "KOBOLD": "K",  # The average enemy
+    "ZOMBIE": "Z",  # Lots of hp, average damage
+    "MIMIC": "M",  # He is displayed as a chest, it does a lot of damage
+    "BANDIT": "B",  # Give up all the money or fight
+    "GHOST": "G",  # The damage goes from 2 times less
+    "DEMON": "6",  # Deals high damage, but low HP
+    "DRAGON": "D",  # Dungeon boss
     # NPCs
-    "TRADER": "T",
-    "WANDERER": "W",
+    "TRADER": "T",  # Sells armor or attack points in exchange for gold
+    "WANDERER": "W",  # He can give experience for a conversation
     # Pickups
-    "MONEY": "$",
-    "FOOD": "%",
-    "POTION": "!",
-    "ARMOR": "=",
-    "WEAPON": "^",
-    "KEY": "~",
+    "CHEST": "C",  # Keeps gold
+    "MONEY": "$",  # Gold
+    "FOOD": "%",  # Starve mechanics in future?
+    "POTION": "!",  # Hit points
+    "ARMOR": "=",  # Reduces incoming damage
+    "WEAPON": "^",  # Increases damage
+    "KEY": "~",  # Opens chests and doors
 }
 
 WALKABLE_TERRAIN: set[str] = {
@@ -60,16 +60,8 @@ WALKABLE_TERRAIN: set[str] = {
     TERRAIN_TILE["PORTAL"],
 }
 
-# TILE_STYLES: dict[str, Style] = {
-#     "#": Style(color="white"),
-#     "@": Style(color="green"),
-# }
-
-# _DEFAULT_STYLE = Style(color="green")
-
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
-# TODO: Update docstrings
 # TODO: NPC and dialogs, trading window
 # TODO: Traps
 # TODO: Locked doors and keys
@@ -78,17 +70,8 @@ WALKABLE_TERRAIN: set[str] = {
 # === Map generator ===
 def load_prefabs(folder: str) -> dict[str, list[list[str]]]:
     """
-    Load room prefabs from `.txt` files in a folder.
-
-    Each file becomes a 2D list of characters (grid).
-    Filename without extension is used as the prefab name.
-
-    Args:
-        folder (str): Path to folder containing `.txt` prefab files
-
-    Returns:
-        dict[str, list[list[str]]]: Dictionary mapping prefab
-        names to 2D grids.
+    Load room prefabs from `.txt` files in `folder`.
+    Returns a dict mapping filenames to 2D character grids.
     """
     cache: dict[str, list[list[str]]] = {}
     for p in Path(folder).glob(pattern="*.txt"):
@@ -101,22 +84,10 @@ def carve_corridor_wide(
     grid: list[list[str]], x1: int, y1: int, x2: int, y2: int, width: int = 3
 ):
     """
-    Carve an L-shaped corridor between two points.
+    Carve an L-shaped corridor (horizontal then vertical)
+    between two points.
 
-    Path: horizontal first (x1 → x2 at y1),
-    then vertical (y1 → y2 at x2).
-
-    Corridor width applies symmetrically around the center line.
-
-    Args:
-        grid (list[list[str]]): 2D terrain grid to modify in-place
-
-        x1 (int), y1 (int): Start coordinates (e.g., center of room A)
-
-        x2 (int), y2 (int): End coordinates (e.g., center of room B)
-
-        width (int, optional): Corridor thickness in
-        tiles (1 or 2 recommended). Defaults to 3.
+    Modifies `grid` in-place with the specified tile width.
     """
     h, w = len(grid), len(grid[0])
     half: int = width // 2
@@ -143,18 +114,25 @@ def carve_corridor_wide(
 
 
 def outside_point(room: "Room", door_x: int, door_y: int) -> tuple[int, int]:
+    """
+    Return the tile coordinates just outside a room at a given
+    door position.
+    """
     if door_x == room.x:  # left wall
         return door_x - 1, door_y
     if door_x == room.x + room.w - 1:  # right wall
         return door_x + 1, door_y
     if door_y == room.y:  # upper wall
         return door_x, door_y - 1
-    # lower wall
-    return door_x, door_y + 1
+
+    return door_x, door_y + 1  # lower wall
 
 
 class StatsPanel(Vertical):
+    """Widget displaying HP/XP progress bars and core player stats."""
+
     def compose(self) -> ComposeResult:
+        """Build the widget layout."""
         with Horizontal(id="bars_row"):
             yield ProgressBar(total=100, id="hp_bar", show_eta=False)
             yield ProgressBar(total=100, id="xp_bar", show_eta=False)
@@ -163,28 +141,17 @@ class StatsPanel(Vertical):
             yield Static("", id="stats_text")
 
     def sync(self, stats: PlayerStats, floor: int):
-        """Update progress-bars by object of PlayerStats"""
-        # HP: percentage of the maximum
-        # hp_pct = (
-        #     round((stats.hits / stats.max_hits) * 100) if
-        # stats.max_hits else 0
-        # )
-        # NEW HP
+        """
+        Update progress bars and stats text to reflect
+        current `stats` and floor.
+        """
 
         self.query_one("#hp_bar", ProgressBar).update(
             total=stats.max_hits, progress=stats.hits
         )
 
-        # XP: the goal depends on the level
-        # xp_target = stats.level * 20
-        # xp_pct = round((stats.xp / xp_target) * 100) if xp_target
-        # else 0
-        # NEW XP
         xp_target: int = stats.level * 20
-        # if not xp_target:
-        #     xp_pct = 0
-        # else:
-        #     xp_pct = round((stats.xp / xp_target) * 100)
+
         self.query_one("#xp_bar", ProgressBar).update(
             total=xp_target,
             progress=stats.xp,
@@ -209,6 +176,9 @@ class StatsPanel(Vertical):
 
 @dataclass
 class PlayerStats:
+    """
+    Dataclass tracking player attributes, inventory, and progression."""
+
     level: int = 1
     hits: int = 5
     max_hits: int = 20
@@ -218,6 +188,8 @@ class PlayerStats:
     xp: int = 0
 
     def take_damage(self, amount: int) -> bool:
+        """
+        Apply damage. Returns True if player HP reaches zero."""
         self.hits -= amount
 
         if self.hits <= 0:
@@ -227,11 +199,18 @@ class PlayerStats:
         return False
 
     def heal(self, amount: int) -> int:
+        """
+        Restore HP up to max_hits. Returns the actual amount healed.
+        """
         old: int = self.hits
         self.hits: int = min(self.max_hits, self.hits + amount)
         return self.hits - old
 
     def gain_xp(self, amount: int) -> bool:
+        """
+        Add XP. Handles level-up, stat boosts, and partial heal.
+        Returns True on level-up.
+        """
         self.xp += amount
         # Each level requires 30 more XP
         xp_needed: int = self.level * 30
@@ -240,7 +219,6 @@ class PlayerStats:
             self.level += 1
             self.max_hits += 2  # Bonus by level
 
-            # DEPRECATED: self.hits: int = self.max_hits
             heal_amount: int = max(3, self.max_hits // 3)
             self.hits: int = min(
                 self.max_hits, self.hits + heal_amount
@@ -249,17 +227,22 @@ class PlayerStats:
         return False
 
     def add_gold(self, amount: int):
+        """Increase player gold."""
         self.gold += amount
 
     def add_armor(self, amount: int):
+        """Increase armor value."""
         self.armor += amount
 
     def add_strength(self, amount: int):
+        """Increase strength value."""
         self.strength += amount
 
 
 @dataclass
 class Enemy:
+    """Dataclass representing a monster on the map."""
+
     x: int
     y: int
     sprite_type: str
@@ -270,6 +253,8 @@ class Enemy:
 
 @dataclass
 class Item:
+    """Dataclass representing a pickup on the map."""
+
     x: int
     y: int
     type: str
@@ -277,41 +262,20 @@ class Item:
 
 class Room:
     """
-    Represents a rectangular room placed on the map.
-
-    Stores position, size, and pre-calculated center point
-    for easy corridor connection.
+    Represents a rectangular dungeon room with position, size,
+    and center.
     """
 
     def __init__(self, x: int, y: int, w: int, h: int):
         """
-        Args:
-            x (int), y (int): Top-left corner coordinates
-
-            w (int), h (int): Room dimensions (width, height)
+        Initialize room with top-left coordinates and dimensions.
         """
         self.x, self.y, self.w, self.h = x, y, w, h
         self.cx, self.cy = x + w // 2, y + h // 2
 
     def overlaps(self, other: "Room", padding: int = 3) -> bool:
         """
-        Check if this room overlaps another (with optional padding).
-
-        Uses AABB collision detection. Padding ensures space
-        between rooms for corridors.
-
-        Args:
-            other (Room): The other Room object to check collision
-            against.
-
-            padding (int, optional): Minimum gap (in tiles) to maintain
-                between the edges of the two rooms. Defaults to 3.
-
-        Returns:
-            bool: `True` if the rooms overlap
-            (including the padding zone), meaning they cannot both
-            be placed on the map. `False` if the rooms are
-            sufficiently separated and can coexist.
+        Check if this room overlaps another, respecting the padding gap.
         """
         return not (
             self.x + self.w + padding <= other.x
@@ -321,6 +285,9 @@ class Room:
         )
 
     def door_position(self, other: "Room") -> tuple[int, int]:
+        """
+        Calculate a random door location on the wall facing `other`.
+        """
         horizontal: bool = abs(self.cx - other.cx) >= abs(self.cy - other.cy)
 
         if horizontal:
@@ -347,28 +314,16 @@ class Room:
 
 class MapGenerator:
     """
-    Generates a dungeon by placing prefabs and connecting them.
-
-    Algorithm:
-    1. Place N rooms at random non-overlapping positions
-    2. Connect rooms sequentially with L-shaped corridors
-    3. Return final grid and list of placed rooms
+    Generates a dungeon by placing prefabs and connecting them
+    with corridors.
     """
 
     def __init__(
         self, width: int = 40, height: int = 25, prefabs: dict | None = None
     ):
         """
-        Args:
-            width (int, optional): Width of the generated map in tiles
-            Defaults to 40.
-
-            height (int, optional): Height of the generated map in tiles
-            Defaults to 25.
-
-            prefabs (dict | None, optional): Dictionary of pre-made room
-            templates.
-            Defaults to None.
+        Initialize generator with map size and optional
+        prefab dictionary.
         """
         self.width: int = width
         self.height: int = height
@@ -381,15 +336,9 @@ class MapGenerator:
     def generate(
         self, room_count: int = 5
     ) -> tuple[list[list[str]], list[Room]]:
-        """Run the dungeon generation algorithm.
-
-        Args:
-            room_count (int, optional): Target number of rooms to place.
-            Defaults to 5.
-
-        Returns:
-            tuple[list[list[str]], list[Room]]:
-            (final 2D grid, list of placed Room objects)
+        """
+        Run generation: place rooms, carve corridors,
+        return grid and room list.
         """
         attempts: int = room_count * 15
         for _ in range(attempts):
@@ -438,37 +387,23 @@ class MapGenerator:
 
 # === Game State ===
 class Entity:
-    """
-    Base class for anything that exists on the map
-    (player, monsters, items).
-
-    Stores position and sprite type; rendering/collision
-    logic is handled by GameState.
-    """
+    """Base class for map objects (player, monsters, items)."""
 
     def __init__(self, x: int, y: int, sprite_type: str):
-        """
-        Args:
-            x (int): X-coordinate (column) where the entity is placed
-
-            y (int): Y-coordinate (row) where the entity is placed
-
-            sprite_type (str): Key name from the `ENTITY_TILE`
-            dictionary that determines which character represents this
-            entity
-        """
+        """Initialize entity with coordinates and sprite type."""
         self.x, self.y = x, y
         self.sprite_type: str = sprite_type
 
 
 class GameState:
-    """Initialize the game state with map dimensions"""
+    """
+    Manages the current game state:
+    map, entities, player stats, and I/O.
+    """
 
     def __init__(self, width: int = 40, height: int = 25):
         """
-        Args:
-            width (int, optional): Map width in tiles. Defaults to 40.
-            height (int, optional): Map height in tiles. Defaults to 25.
+        Initialize game state with map dimensions and default values.
         """
         self.width: int = width
         self.height: int = height
@@ -484,7 +419,12 @@ class GameState:
         self.current_floor = 0
         self.save_file = Path("savegame.json")
 
+    # It's not very well made, it might be worth redoing
     def save_game(self, filepath: str | Path = "savegame.json") -> bool:
+        """
+        Serialize current state to a JSON file.
+        Returns True on success.
+        """
         try:
             data = {
                 "meta": {
@@ -510,6 +450,10 @@ class GameState:
             return False
 
     def load_game(self, filepath: str | Path = "savegame.json") -> bool:
+        """
+        Deserialize state from a JSON file.
+        Returns True on success.
+        """
         try:
             if not Path(filepath).exists():
                 return False
@@ -543,17 +487,11 @@ class GameState:
             return False
 
     def generate_level(self, prefabs: dict, room_count: int = 10):
-        """Generate a new dungeon level and place player/stairs.
+        """
+        Generate a new floor layout, place player/stairs, and
+        populate enemies/items.
 
-        Steps:
-        1. Create MapGenerator and run generate()
-        2. Place player in center of first room
-        3. Place down-stairs in center of last room
-        4. Update map_render for display
-
-        Args:
-            prefabs (dict): Dictionary of prefab templates, as returned
-            by `load_prefabs()`.
+        Handles special logic for boss floors.
         """
         gen = MapGenerator(self.width, self.height, prefabs)
         self.map_grid, self.rooms = gen.generate(room_count=room_count)
@@ -600,6 +538,7 @@ class GameState:
                 self.spawn_items(count=random.randint(3, 6))
 
     def spawn_items(self, count: int = 5) -> None:
+        """Randomly place `count` items on valid walkable tiles."""
         # Accessed enemies from ENTITY_TILE
         item_types: list[str] = ["MONEY", "FOOD", "POTION", "ARMOR", "WEAPON"]
 
@@ -626,12 +565,14 @@ class GameState:
             placed += 1
 
     def item_at(self, x: int, y: int) -> Item | None:
+        """Return the item at (x, y), or None if empty."""
         for item in self.items:
             if item.x == x and item.y == y:
                 return item
         return None
 
     def spawn_enemies(self, count: int = 5) -> None:
+        """Randomly place `count` enemies on valid walkable tiles."""
         variants: list[tuple[str, int, int, int]] = [
             # (type, hits, attack, xp_reward)
             ("SLIME", 6, 2, 2),
@@ -671,11 +612,9 @@ class GameState:
             placed += 1
 
     def render(self) -> str:
-        """Compose final display: terrain + entities overlay.
-
-        Returns:
-            str: Multi-line string with .ljust() padding
-            to preserve alignment in Textual.
+        """
+        Generate a formatted string representation of the map
+        with overlaid entities.
         """
 
         # Copy the map
@@ -697,35 +636,21 @@ class GameState:
         ):
             display[self.player_y][self.player_x] = ENTITY_TILE["PLAYER"]
 
-        # output = Text(no_wrap=True, overflow="ellipsis")
-        # append = output.append
-
-        # for row in display:
-        #     for char in row:
-        #         append(char, TILE_STYLES.get(char, _DEFAULT_STYLE))
-        #     append("\n")
-
-        # output
         return "\n".join("".join(row).ljust(self.width) for row in display)
 
     def enemy_at(self, x: int, y: int) -> Enemy | None:
+        """Return the enemy at (x, y), or None if empty."""
         for enemy in self.enemies:
             if enemy.x == x and enemy.y == y:
                 return enemy
         return None
 
     def move_player(self, dx: int, dy: int) -> bool:
-        """Tries to move the player
+        """
+        Attempt to move player by (dx, dy). Handles tile validation,
+        combat,and item pickup.
 
-        Args:
-            dx (int): X-direction change (horizontal): `-1` = left,
-            `+1` = right
-
-            dy (int): Y-direction change (vertical): `-1` = up,
-            `+1` = down
-
-        Returns:
-            bool: `True` (Success) or `False` (Fail)
+        Returns True if an action was taken.
         """
         nx, ny = self.player_x + dx, self.player_y + dy
 
@@ -780,34 +705,39 @@ class GameState:
 
 # === The playing field widget ===
 class GameScreen(Static):
-    """The widget that draws the map"""
+    """Textual widget that renders the game map."""
 
     def __init__(self, game_state: GameState, **kwargs) -> None:
         """
-        Args:
-            game_state (GameState): The GameState instance that holds
-            the current map, entities, and player position
+        Initialize with a GameState reference and render the initial
+        map.
         """
         super().__init__(**kwargs)
         self.game_state: GameState = game_state
         self.update(content=self.game_state.render())  # First render
 
     def refresh_map(self) -> None:
-        """Just redraws the map after the player has moved
-
-        To call after a state change"""
+        """
+        Redraw the map after game state changes.
+        """
 
         self.update(content=self.game_state.render())
 
 
 class MainMenu(Screen):
+    """
+    Main menu screen with New Game, Load, and Quit options.
+    """
+
     def compose(self) -> ComposeResult:
+        """Build menu layout."""
         yield Static("Rogue", id="title")
         yield Button("New Game", id="new_game")
         yield Button("Load Game", id="load_game")
         yield Button("Quit", id="quit")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button clicks: start/load game or quit."""
         app = cast(RogueApp, self.app)
 
         if event.button.id == "new_game":
@@ -826,14 +756,18 @@ class MainMenu(Screen):
 
 
 class GamePlayScreen(Screen):
+    """Main gameplay screen containing the map and stats panel."""
+
     def __init__(
         self, game_state: GameState, prefabs: dict[str, list[list[str]]]
     ):
+        """Initialize with game state and prefabs."""
         super().__init__()
         self.game_state: GameState = game_state
         self.prefabs: dict[str, list[list[str]]] = prefabs
 
     def compose(self) -> ComposeResult:
+        """Build gameplay layout."""
         yield GameScreen(self.game_state, id="game_display")
         yield StatsPanel(id="stats_panel")
         yield Header()
@@ -841,14 +775,16 @@ class GamePlayScreen(Screen):
 
 
 class StatsOverlay(Screen):
-    """Player stats"""
+    """Overlay screen displaying detailed player statistics."""
 
     def __init__(self, stats: PlayerStats, floor: int):
+        """Initialize with player stats and current floor."""
         super().__init__()
         self.stats: PlayerStats = stats
         self.floor: int = floor
 
     def compose(self) -> ComposeResult:
+        """Build stats display UI."""
         xp_needed: int = self.stats.level * 30  # from gain_xp
         yield Static(
             content=f"📊 Stats • Floor {self.floor}\n\n"
@@ -863,13 +799,14 @@ class StatsOverlay(Screen):
         )
 
     def on_key(self, event: Key) -> None:
+        """Close overlay on ESC press."""
         if event.key == "escape":
             self.app.pop_screen()
 
 
 # === Main app ===
 class RogueApp(App):
-    """Main Application"""
+    """Main Textual application for the rogue."""
 
     CSS_PATH = "style.tcss"
     SCREENS = {
@@ -882,6 +819,9 @@ class RogueApp(App):
     ]
 
     def __init__(self) -> None:
+        """
+        Initialize app, load prefabs, and set up initial game state.
+        """
         super().__init__()
         self.prefabs: dict[str, list[list[str]]] = load_prefabs(
             folder="prefabs"
@@ -891,29 +831,29 @@ class RogueApp(App):
         self._sync_stats()
 
     def compose(self) -> ComposeResult:
-        """Build the UI by yielding widgets in display order.
-
-        Yields:
-            Many widgets
-        """
+        """Build the main UI layout."""
         yield GameScreen(self.game_state)
         yield Header()
         yield Footer()
 
     def on_mount(self) -> None:
+        """Push the main menu on startup."""
         self.push_screen(screen="main_menu")
 
     def action_save_game(self) -> None:
+        """Save game state and notify user."""
         if self.game_state.save_game():
             self.notify("Game saved!", timeout=2)
         else:
             self.notify("Save failed!", timeout=3, severity="error")
 
     def action_back_to_menu(self) -> None:
+        """Auto-save current progress and return to main menu."""
         self.game_state.save_game()
         self.pop_screen()
 
     def action_show_stats(self) -> None:
+        """Open the detailed stats overlay screen."""
         self.push_screen(
             screen=StatsOverlay(
                 stats=self.game_state.player_stats,
@@ -922,10 +862,9 @@ class RogueApp(App):
         )
 
     def on_key(self, event: Key) -> None:
-        """Reaction to the keys (Input Handler)
-
-        Args:
-            event (Key): an object with information about the key
+        """
+        Process movement inputs, update game state, handle floor
+        transitions, and check for game over conditions.
         """
         UP_KEYS: set[str] = {"up", "w", "k"}
         DOWN_KEYS: set[str] = {"down", "s", "j"}
@@ -969,13 +908,12 @@ class RogueApp(App):
 
             self.pop_screen()
             return
-            # Restart game
-            # self.game_state = GameState(width=80, height=30)
-            # self.game_state.generate_level(self.prefabs)
-            # self.query_one(GameScreen).game_state = self.game_state
-            # self.query_one(GameScreen).refresh_map()
 
     def _sync_stats(self) -> None:
+        """
+        Update the stats panel with current player data.
+        Silently ignores errors if the panel hasn't been drawn yet.
+        """
         try:
             panel: StatsPanel = self.screen.query_one(
                 "#stats_panel", StatsPanel
