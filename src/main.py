@@ -63,7 +63,7 @@ WALKABLE_TERRAIN: set[str] = {
 # TODO: portal after dragon's death to escape
 # TODO: Main menu with ratings (gold, kills, max stats, etc.),
 # TODO: NPC and dialogs, trading window
-# TODO: Traps
+# TODO: Traps & other enemies, spawn rate
 # TODO: Locked doors and keys
 
 
@@ -150,7 +150,7 @@ class StatsPanel(Vertical):
             total=stats.max_hits, progress=stats.hits
         )
 
-        xp_target: int = stats.level * 20
+        xp_target: int = stats.level * 30
 
         self.query_one("#xp_bar", ProgressBar).update(
             total=xp_target,
@@ -582,7 +582,7 @@ class GameState:
 
         occupied: set[tuple[int, int]] = {(self.player_x, self.player_y)}
 
-        attempts: int = count * 30
+        attempts: int = count * 20
         placed = 0
 
         while placed < count and attempts > 0:
@@ -754,6 +754,10 @@ class MainMenu(Screen):
         elif event.button.id == "quit":
             self.app.exit(return_code=1)
 
+    def on_key(self, event: Key) -> None:
+        if event.key == "escape":
+            return
+
 
 class GamePlayScreen(Screen):
     """Main gameplay screen containing the map and stats panel."""
@@ -832,7 +836,6 @@ class RogueApp(App):
 
     def compose(self) -> ComposeResult:
         """Build the main UI layout."""
-        yield GameScreen(self.game_state)
         yield Header()
         yield Footer()
 
@@ -850,7 +853,9 @@ class RogueApp(App):
     def action_back_to_menu(self) -> None:
         """Auto-save current progress and return to main menu."""
         self.game_state.save_game()
-        self.pop_screen()
+
+        if len(self.screen_stack) > 1:
+            self.pop_screen()
 
     def action_show_stats(self) -> None:
         """Open the detailed stats overlay screen."""
@@ -872,6 +877,9 @@ class RogueApp(App):
         RIGHT_KEYS: set[str] = {"right", "d", "l"}
 
         moved = False
+
+        if not isinstance(self.screen, GamePlayScreen):
+            return
 
         if event.key in UP_KEYS:
             moved: bool = self.game_state.move_player(0, -1)
