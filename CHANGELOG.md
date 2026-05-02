@@ -1,3 +1,13 @@
+## [0.7.1] - 2026-05-02
+
+### 🐛 Bug Fixes
+
+- Small fixes
+
+### 📚 Documentation
+
+- README create
+- Docstrings and comments update
 ## [0.7.0] - 2026-05-01
 
 ### 🚀 Features
